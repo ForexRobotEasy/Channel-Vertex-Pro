@@ -1,0 +1,104 @@
+mql5
+//+------------------------------------------------------------------+
+//|                                                     Channel Vertex Pro |
+//|                                        https://www.forexroboteasy.com |
+//|                                                   Forex Robot Easy Team |
+//+------------------------------------------------------------------+
+#property copyright 'Forex Robot Easy Team'
+#property link      'https://www.forexroboteasy.com'
+#property version   '1.00'
+#property strict
+
+// Indicator input parameters
+input int ChannelPeriod = 20;  // Period for calculating price channel
+input int TrianglePeriod = 14; // Period for calculating triangle pattern
+
+// Global variables
+double UpperChannel[];
+double LowerChannel[];
+double TriangleVertexes[];
+int vertexCount = 0;
+
+//+------------------------------------------------------------------+
+//| Custom indicator initialization function                         |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+   IndicatorBuffers(3);
+   SetIndexBuffer(0, UpperChannel);
+   SetIndexBuffer(1, LowerChannel);
+   SetIndexBuffer(2, TriangleVertexes);
+   SetIndexStyle(0, DRAW_LINE);
+   SetIndexStyle(1, DRAW_LINE);
+   SetIndexStyle(2, DRAW_ARROW);
+   SetIndexLabel(2, 'Triangle Vertex');
+   SetIndexDrawBegin(0, ChannelPeriod);
+   SetIndexDrawBegin(1, ChannelPeriod);
+   SetIndexDrawBegin(2, TrianglePeriod);
+   return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Custom indicator iteration function                              |
+//+------------------------------------------------------------------+
+int OnCalculate(const int rates_total,
+                const int prev_calculated,
+                const datetime& time[],
+                const double& open[],
+                const double& high[],
+                const double& low[],
+                const double& close[],
+                const long& tick_volume[],
+                const long& volume[],
+                const int& spread[])
+{
+   int limit = rates_total - prev_calculated;
+   if (prev_calculated > 0)
+      limit++;
+
+   for (int i = 0; i < limit; i++)
+   {
+      int pos = rates_total - limit + i;
+
+      // Calculate price channel
+      double highestHigh = High[pos];
+      double lowestLow = Low[pos];
+      for (int j = 1; j < ChannelPeriod; j++)
+      {
+         highestHigh = MathMax(highestHigh, High[pos + j]);
+         lowestLow = MathMin(lowestLow, Low[pos + j]);
+      }
+      UpperChannel[i] = highestHigh;
+      LowerChannel[i] = lowestLow;
+
+      // Calculate triangle pattern
+      if (pos >= TrianglePeriod - 2)
+      {
+         if (vertexCount < 3)
+         {
+            TriangleVertexes[i] = 0;
+            for (int k = 0; k <= vertexCount; k++)
+            {
+               if (close[pos - k] >= TriangleVertexes[i])
+                  TriangleVertexes[i] = close[pos - k];
+            }
+            vertexCount++;
+         }
+         else
+         {
+            TriangleVertexes[i] = 0;
+            for (int k = 0; k < 3; k++)
+            {
+               if (close[pos - k] >= TriangleVertexes[i])
+                  TriangleVertexes[i] = close[pos - k];
+            }
+         }
+      }
+      else
+      {
+         TriangleVertexes[i] = 0;
+      }
+   }
+
+   return(rates_total);
+}
